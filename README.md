@@ -25,3 +25,7 @@ Run formatter:
 ```bash
 npm run format
 ```
+
+## Showcase
+
+![untitled-ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/ebfd2f51-eb50-4a72-96e4-7fe190b87a37)
