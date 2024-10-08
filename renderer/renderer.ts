@@ -4,19 +4,23 @@ import { Shader } from './shader';
 import { mat4 } from 'gl-matrix';
 
 export module Renderer {
-
   type ProgramInfo = {
-      program: WebGLProgram;
-      attribLocations: {
-        vertexPosition: number;
-      };
-      uniformLocations: {
-        projectionMatrix: WebGLUniformLocation;
-        modelViewMatrix: WebGLUniformLocation
-      }
+    program: WebGLProgram;
+    attribLocations: {
+      vertexPosition: number;
+      vertexColor: number;
     };
+    uniformLocations: {
+      projectionMatrix: WebGLUniformLocation;
+      modelViewMatrix: WebGLUniformLocation;
+    };
+  };
 
-  export function render() {
+  type GlBuffers = {
+    position: WebGLBuffer;
+    color: WebGLBuffer;
+  };
+  export function render(): void {
     const canvas: HTMLCanvasElement = Canvas.get_canvas()!;
     if (canvas == null) {
       console.error('Unable to get canvas');
@@ -31,16 +35,23 @@ export module Renderer {
     // vertex sharer
     const vsSource = `
       attribute vec4 aVertexPosition;
+      attribute vec4 aVertexColor;
+
       uniform mat4 uModelViewMatrix;
       uniform mat4 uProjectionMatrix;
+
+      varying lowp vec4 vColor;
       void main() {
         gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
+        vColor = aVertexColor;
       }
     `;
     // fragment shader
     const fsSource = `
+      varying lowp vec4 vColor;
+
       void main() {
-        gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+        gl_FragColor = vColor;
       }
     `;
 
@@ -54,6 +65,7 @@ export module Renderer {
       program: shaderProgram,
       attribLocations: {
         vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+        vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
       },
       uniformLocations: {
         projectionMatrix: gl.getUniformLocation(
@@ -71,25 +83,35 @@ export module Renderer {
       1.0, 1.0, -1.0, 1.0, 1.0, -1.0, -1.0, -1.0,
     ]);
 
-    const positionBuffer: WebGLBuffer = Buffer.init(gl)!;
+    const positionBuffer: WebGLBuffer = Buffer.initArrayBuffer(gl)!;
     if (positionBuffer == null) {
       console.error('Unable to initialize buffer');
       return;
     }
-    Buffer.bind(gl, positionBuffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     Buffer.data(gl, positions, gl.STATIC_DRAW);
+
+    const colorBuffer: WebGLBuffer = Buffer.initColorBuffer(gl)!;
+    if (colorBuffer == null) {
+      console.error('Unable to initialize color buffer');
+      return;
+    }
 
     let squareRotation: number = 0.0;
     let deltaTime: number = 0.0; // TODO: move to time module
     let then: number = 0.0;
 
-    function render(now: number): void
-    {
+    const buffers = {
+      position: positionBuffer,
+      color: colorBuffer,
+    };
+
+    function render(now: number): void {
       now *= 0.001;
       deltaTime = now - then;
       then = now;
 
-      draw(gl, programInfo, positionBuffer, squareRotation);
+      draw(gl, programInfo, buffers, squareRotation);
       squareRotation += deltaTime;
       requestAnimationFrame(render);
     }
@@ -99,7 +121,7 @@ export module Renderer {
   function draw(
     gl: WebGLRenderingContext,
     programInfo: ProgramInfo,
-    positionBuffer: WebGLBuffer,
+    buffers: GlBuffers,
     squareRotation: number
   ): void {
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -108,6 +130,7 @@ export module Renderer {
     gl.depthFunc(gl.LEQUAL);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+    // camera settings
     const fieldOfView: number = (45 * Math.PI) / 180;
     const aspect: number =
       (<HTMLCanvasElement>gl.canvas).clientWidth /
@@ -122,16 +145,45 @@ export module Renderer {
     mat4.translate(modelViewMatrix, modelViewMatrix, [-0.0, 0.0, -6.0]);
     mat4.rotate(modelViewMatrix, modelViewMatrix, squareRotation, [0, 0, 1]);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.vertexAttribPointer(
-      programInfo.attribLocations.vertexPosition,
-      2,
-      gl.FLOAT,
-      false,
-      0,
-      0
-    );
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+    // vertex position
+    {
+      const numComponents: number = 2;
+      const type: GLenum = gl.FLOAT;
+      const normalize: boolean = false;
+      const stride: number = 0;
+      const offset: number = 0;
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
+      gl.vertexAttribPointer(
+        programInfo.attribLocations.vertexPosition,
+        numComponents,
+        type,
+        normalize,
+        stride,
+        offset
+      );
+      gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+    }
+
+    // vertex color
+    {
+      const numComponents: number = 4;
+      const type: GLenum = gl.FLOAT;
+      const normalize: boolean = false;
+      const stride: number = 0;
+      const offset: number = 0;
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
+      gl.vertexAttribPointer(
+        programInfo.attribLocations.vertexColor,
+        numComponents,
+        type,
+        normalize,
+        stride,
+        offset,
+      );
+      gl.enableVertexAttribArray(programInfo.attribLocations.vertexColor);
+    }
+
+    // set uniforms
     gl.useProgram(programInfo.program);
     gl.uniformMatrix4fv(
       programInfo.uniformLocations.projectionMatrix,
@@ -143,6 +195,9 @@ export module Renderer {
       false,
       modelViewMatrix
     );
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    // draw call
+    const offset: number = 0;
+    const vertexCount: number = 4;
+    gl.drawArrays(gl.TRIANGLE_STRIP, offset, vertexCount);
   }
 }
