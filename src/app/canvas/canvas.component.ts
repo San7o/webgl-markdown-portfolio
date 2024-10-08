@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { Canvas } from '../../../renderer/canvas';
+import { Renderer } from '../../../renderer/renderer';
 
 @Component({
   selector: 'app-canvas',
@@ -10,6 +10,6 @@ import { Canvas } from '../../../renderer/canvas';
 })
 export class CanvasComponent {
   ngOnInit(): void {
-    Canvas.create();
+    Renderer.render();
   }
 }
