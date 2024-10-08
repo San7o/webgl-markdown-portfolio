@@ -1,11 +1,11 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { CubeComponent } from './cube/cube.component';
+import { CanvasComponent } from './canvas/canvas.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, CubeComponent],
+  imports: [RouterOutlet, CanvasComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })

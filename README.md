@@ -7,6 +7,8 @@ from markdown using templates via a **Rust** program [here](https://github.com/S
 
 The project is currently in early development.
 
+The renderer uses [glMatrix](https://glmatrix.net/) for matrix computations, follow the build instructions in the github to build the library for your own projects.
+
 ## usage
 Serve:
 ```bash
