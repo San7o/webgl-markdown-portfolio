@@ -6,7 +6,7 @@ import { Renderer } from '../../../renderer/renderer';
   standalone: true,
   imports: [],
   templateUrl: './canvas.component.html',
-  styleUrl: './canvas.component.scss'
+  styleUrl: './canvas.component.scss',
 })
 export class CanvasComponent {
   ngOnInit(): void {

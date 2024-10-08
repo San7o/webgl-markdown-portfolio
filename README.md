@@ -9,7 +9,7 @@ The project is currently in early development.
 
 The renderer uses [glMatrix](https://glmatrix.net/) for matrix computations, follow the build instructions in the github to build the library for your own projects.
 
-Everything in the rendered uses typescript for type safety.
+Everything in the renderer uses typescript for type safety.
 
 ## usage
 Serve:
@@ -19,4 +19,9 @@ npx ng serve
 Create a component:
 ```bash
 npx ng g c myComponent
+```
+
+Run formatter:
+```bash
+npm run format
 ```
