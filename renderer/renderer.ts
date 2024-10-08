@@ -19,6 +19,7 @@ export module Renderer {
   type GlBuffers = {
     position: WebGLBuffer;
     color: WebGLBuffer;
+    indices: WebGLBuffer;
   };
   export function render(): void {
     const canvas: HTMLCanvasElement = Canvas.get_canvas()!;
@@ -80,8 +81,20 @@ export module Renderer {
     };
 
     const positions: Float32Array = new Float32Array([
-      1.0, 1.0, -1.0, 1.0, 1.0, -1.0, -1.0, -1.0,
+      // Front face
+      -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, 1.0,
+      // Back face
+      -1.0, -1.0, -1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0,
+      // Top face
+      -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0,
+      // Bottom face
+      -1.0, -1.0, -1.0, 1.0, -1.0, -1.0, 1.0, -1.0, 1.0, -1.0, -1.0, 1.0,
+      // Right face
+      1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0,
+      // Left face
+      -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0,
     ]);
+
 
     const positionBuffer: WebGLBuffer = Buffer.initArrayBuffer(gl)!;
     if (positionBuffer == null) {
@@ -97,22 +110,30 @@ export module Renderer {
       return;
     }
 
-    let squareRotation: number = 0.0;
-    let deltaTime: number = 0.0; // TODO: move to time module
-    let then: number = 0.0;
+    const indexBuffer: WebGLBuffer = Buffer.initIndexBuffer(gl)!;
+    if (indexBuffer == null) {
+      console.error('Unable to initialize index buffer');
+      return;
+    }
 
     const buffers = {
       position: positionBuffer,
       color: colorBuffer,
+      indices: indexBuffer,
     };
+
+
+    let cubeRotation: number = 0.0;
+    let deltaTime: number = 0.0; // TODO: move to time module
+    let then: number = 0.0;
 
     function render(now: number): void {
       now *= 0.001;
       deltaTime = now - then;
       then = now;
 
-      draw(gl, programInfo, buffers, squareRotation);
-      squareRotation += deltaTime;
+      draw(gl, programInfo, buffers, cubeRotation);
+      cubeRotation += deltaTime;
       requestAnimationFrame(render);
     }
     requestAnimationFrame(render);
@@ -122,7 +143,7 @@ export module Renderer {
     gl: WebGLRenderingContext,
     programInfo: ProgramInfo,
     buffers: GlBuffers,
-    squareRotation: number
+    cubeRotation: number
   ): void {
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clearDepth(1.0);
@@ -143,11 +164,13 @@ export module Renderer {
     mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
     const modelViewMatrix = mat4.create();
     mat4.translate(modelViewMatrix, modelViewMatrix, [-0.0, 0.0, -6.0]);
-    mat4.rotate(modelViewMatrix, modelViewMatrix, squareRotation, [0, 0, 1]);
+    mat4.rotate(modelViewMatrix, modelViewMatrix, cubeRotation, [0, 0, 1]);
+    mat4.rotate(modelViewMatrix, modelViewMatrix, cubeRotation * 0.7, [0, 1, 0]);
+    mat4.rotate(modelViewMatrix, modelViewMatrix, cubeRotation * 0.3, [1, 0, 0]);
 
     // vertex position
     {
-      const numComponents: number = 2;
+      const numComponents: number = 3;
       const type: GLenum = gl.FLOAT;
       const normalize: boolean = false;
       const stride: number = 0;
@@ -182,6 +205,7 @@ export module Renderer {
       );
       gl.enableVertexAttribArray(programInfo.attribLocations.vertexColor);
     }
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
 
     // set uniforms
     gl.useProgram(programInfo.program);
@@ -195,9 +219,11 @@ export module Renderer {
       false,
       modelViewMatrix
     );
+
     // draw call
+    const vertexCount: number = 36;
+    const type: GLenum = gl.UNSIGNED_SHORT;
     const offset: number = 0;
-    const vertexCount: number = 4;
-    gl.drawArrays(gl.TRIANGLE_STRIP, offset, vertexCount);
+    gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
   }
 }
