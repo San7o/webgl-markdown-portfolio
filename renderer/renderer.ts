@@ -4,6 +4,18 @@ import { Shader } from './shader';
 import { mat4 } from 'gl-matrix';
 
 export module Renderer {
+
+  type ProgramInfo = {
+      program: WebGLProgram;
+      attribLocations: {
+        vertexPosition: number;
+      };
+      uniformLocations: {
+        projectionMatrix: WebGLUniformLocation;
+        modelViewMatrix: WebGLUniformLocation
+      }
+    };
+
   export function render() {
     const canvas: HTMLCanvasElement = Canvas.get_canvas()!;
     if (canvas == null) {
@@ -38,7 +50,7 @@ export module Renderer {
       return;
     }
 
-    const programInfo = {
+    const programInfo: ProgramInfo = {
       program: shaderProgram,
       attribLocations: {
         vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
@@ -47,11 +59,11 @@ export module Renderer {
         projectionMatrix: gl.getUniformLocation(
           shaderProgram,
           'uProjectionMatrix'
-        ),
+        )!,
         modelViewMatrix: gl.getUniformLocation(
           shaderProgram,
           'uModelViewMatrix'
-        ),
+        )!,
       },
     };
 
@@ -67,23 +79,49 @@ export module Renderer {
     Buffer.bind(gl, positionBuffer);
     Buffer.data(gl, positions, gl.STATIC_DRAW);
 
-    // do the render -----------------------------
+    let squareRotation: number = 0.0;
+    let deltaTime: number = 0.0; // TODO: move to time module
+    let then: number = 0.0;
 
-    gl.clearColor(1.0, 0.0, 0.0, 1.0);
+    function render(now: number): void
+    {
+      now *= 0.001;
+      deltaTime = now - then;
+      then = now;
+
+      draw(gl, programInfo, positionBuffer, squareRotation);
+      squareRotation += deltaTime;
+      requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+  }
+
+  function draw(
+    gl: WebGLRenderingContext,
+    programInfo: ProgramInfo,
+    positionBuffer: WebGLBuffer,
+    squareRotation: number
+  ): void {
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clearDepth(1.0);
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     const fieldOfView: number = (45 * Math.PI) / 180;
-    const aspect: number = (<HTMLCanvasElement> gl.canvas).clientWidth / (<HTMLCanvasElement> gl.canvas).clientHeight;
+    const aspect: number =
+      (<HTMLCanvasElement>gl.canvas).clientWidth /
+      (<HTMLCanvasElement>gl.canvas).clientHeight;
     const zNear: number = 0.1;
     const zFar: number = 100.0;
     const projectionMatrix = mat4.create();
 
+    // transform
     mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
     const modelViewMatrix = mat4.create();
     mat4.translate(modelViewMatrix, modelViewMatrix, [-0.0, 0.0, -6.0]);
+    mat4.rotate(modelViewMatrix, modelViewMatrix, squareRotation, [0, 0, 1]);
+
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     gl.vertexAttribPointer(
       programInfo.attribLocations.vertexPosition,
