@@ -1,6 +1,7 @@
 import { Canvas } from './canvas';
 import { Buffer } from './buffer';
 import { Shader } from './shader';
+import { mat4 } from 'gl-matrix';
 
 export module Renderer {
   export function render() {
@@ -66,7 +67,44 @@ export module Renderer {
     Buffer.bind(gl, positionBuffer);
     Buffer.data(gl, positions, gl.STATIC_DRAW);
 
+    // do the render -----------------------------
+
     gl.clearColor(1.0, 0.0, 0.0, 1.0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.clearDepth(1.0);
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.LEQUAL);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    const fieldOfView: number = (45 * Math.PI) / 180;
+    const aspect: number = (<HTMLCanvasElement> gl.canvas).clientWidth / (<HTMLCanvasElement> gl.canvas).clientHeight;
+    const zNear: number = 0.1;
+    const zFar: number = 100.0;
+    const projectionMatrix = mat4.create();
+
+    mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
+    const modelViewMatrix = mat4.create();
+    mat4.translate(modelViewMatrix, modelViewMatrix, [-0.0, 0.0, -6.0]);
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.vertexAttribPointer(
+      programInfo.attribLocations.vertexPosition,
+      2,
+      gl.FLOAT,
+      false,
+      0,
+      0
+    );
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+    gl.useProgram(programInfo.program);
+    gl.uniformMatrix4fv(
+      programInfo.uniformLocations.projectionMatrix,
+      false,
+      projectionMatrix
+    );
+    gl.uniformMatrix4fv(
+      programInfo.uniformLocations.modelViewMatrix,
+      false,
+      modelViewMatrix
+    );
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 }
